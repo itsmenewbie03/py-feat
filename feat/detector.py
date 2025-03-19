@@ -4,44 +4,32 @@ Main Detector class. The Detector class wraps other pre-trained models
 perform detection
 """
 
+import logging
 import os
+import warnings
+
 import numpy as np
 import pandas as pd
-from skimage.feature import hog
-from feat.utils import (
-    openface_2d_landmark_columns,
-    FEAT_EMOTION_COLUMNS,
-    FEAT_FACEBOX_COLUMNS,
-    FEAT_FACEPOSE_COLUMNS_3D,
-    FEAT_FACEPOSE_COLUMNS_6D,
-    FEAT_TIME_COLUMNS,
-    FEAT_IDENTITY_COLUMNS,
-    set_torch_device,
-    is_list_of_lists_empty,
-)
-from feat.utils.io import get_resource_path
-from feat.utils.image_operations import (
-    extract_face_from_landmarks,
-    extract_face_from_bbox,
-    convert_image_to_tensor,
-    BBox,
-)
-from feat.utils.stats import cluster_identities
-from feat.pretrained import get_pretrained_models, fetch_model, AU_LANDMARK_MAP
-from feat.data import (
-    Fex,
-    ImageDataset,
-    VideoDataset,
-    _inverse_face_transform,
-    _inverse_landmark_transform,
-)
 import torch
-from torch.utils.data import DataLoader
-from torchvision.transforms import Compose, Normalize, Grayscale, ToTensor
-import logging
-import warnings
-from tqdm import tqdm
 import torchvision.transforms as transforms
+from skimage.feature import hog
+from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, Grayscale, Normalize, ToTensor
+from tqdm import tqdm
+
+from feat.data import (Fex, ImageDataset, VideoDataset,
+                       _inverse_face_transform, _inverse_landmark_transform)
+from feat.pretrained import AU_LANDMARK_MAP, fetch_model, get_pretrained_models
+from feat.utils import (FEAT_EMOTION_COLUMNS, FEAT_FACEBOX_COLUMNS,
+                        FEAT_FACEPOSE_COLUMNS_3D, FEAT_FACEPOSE_COLUMNS_6D,
+                        FEAT_IDENTITY_COLUMNS, FEAT_TIME_COLUMNS,
+                        is_list_of_lists_empty, openface_2d_landmark_columns,
+                        set_torch_device)
+from feat.utils.image_operations import (BBox, convert_image_to_tensor,
+                                         extract_face_from_bbox,
+                                         extract_face_from_landmarks)
+from feat.utils.io import get_resource_path
+from feat.utils.stats import cluster_identities
 
 # Supress sklearn warning about pickled estimators and diff sklearn versions
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
@@ -472,13 +460,15 @@ class Detector(object):
                 landmark = (
                     self.landmark_detector(extracted_faces, **landmark_model_kwargs)[0]
                     .cpu()
-                    .data.numpy()
+                    .data.detach()
+                    .numpy()
                 )
             else:
                 landmark = (
                     self.landmark_detector(extracted_faces, **landmark_model_kwargs)
                     .cpu()
-                    .data.numpy()
+                    .data.detach()
+                    .numpy()
                 )
 
             landmark = landmark.reshape(landmark.shape[0], -1, 2)
@@ -698,7 +688,7 @@ class Detector(object):
             face_embeddings = self.identity_model(
                 extracted_faces, **identity_model_kwargs
             )
-        return self._convert_detector_output(facebox, face_embeddings.numpy())
+        return self._convert_detector_output(facebox, face_embeddings.detach().numpy())
 
     def _run_detection_waterfall(
         self,
@@ -963,7 +953,7 @@ class Detector(object):
                 identity_model_kwargs,
             )
 
-            frames = list(batch_data["Frame"].numpy())
+            frames = list(batch_data["Frame"].detach().numpy())
 
             output = self._create_fex(
                 faces,
