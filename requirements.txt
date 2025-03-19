@@ -9,7 +9,7 @@ pywavelets>=0.3.0
 h5py>=2.7.0
 Pillow>=6.0.0
 torchvision
-scikit-image==0.19
+scikit-image>=0.19
 joblib
 easing_functions
 celluloid
