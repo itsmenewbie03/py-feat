@@ -1,4 +1,4 @@
-pandas==1.0
+pandas>=1.0
 numpy<2
 seaborn==0.7.0
 matplotlib==2.1
